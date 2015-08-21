@@ -1,0 +1,159 @@
+
+
+html {
+	margin: 0;
+	padding: 0;
+}
+
+body {
+    color: #6b6a63;
+    font-size: 14px;
+    line-height: 18px;
+    font-family: Verdana, Geneva, Arial, Helvetica, sans-serif;
+	background: #fff;
+    margin: 0;
+    padding: 0;
+}
+
+
+#todo-content
+{
+
+    background: url(/design_wedding/top_bg_gold.png) repeat-x top left;
+    padding-top:20px;
+    padding-left:2%;
+    padding-right:2%;
+}
+
+
+#todo-footer
+{
+    min-height:205px;
+    width:100%;
+    background: url(/design_wedding/footer_bg_gold.png) repeat-x bottom left;
+    padding-top:20px;
+}
+
+
+
+
+
+
+
+
+
+/********** clearfix **********/
+
+.clearfix:after {
+    content: ".";
+    display: block;
+    height: 0;
+    clear: both;
+    visibility: hidden;
+}
+
+.clearfix { 	
+	display: inline-block;
+}
+
+/* Hides from IE-mac \*/ * html .clearfix {
+    height: 1%;
+}
+
+.clearfix {
+    display: block !important;
+}
+
+/* End hide from IE-mac */
+
+
+
+h1, h2, h3, h4, h5, h6 {
+	font-family: Georgia;
+    margin: -10px 0px 5px 0px;
+    line-height: 120%;
+	color: #82847e;
+	font-weight: normal;
+	margin:
+}
+
+h1 {
+    font-size: 24px;
+}
+
+h2 {
+    font-size: 22px;
+}
+
+h3 {
+    font-size: 18px;
+}
+
+h4 {
+    font-size: 16px;
+}
+
+h5 {
+    font-size: 14px;
+}
+
+h6 {
+    font-size: 12px;
+}
+
+blockquote:before, blockquote:after, q:before, q:after {
+    content: "";
+}
+
+blockquote, q {
+    quotes: "" "";
+}
+
+blockquote {
+	background-color: #FFF8EA;
+	margin-top: 10px;
+	margin-right: 20px;
+	margin-bottom: 10px;
+	margin-left: 20px;
+	padding: 10px;
+	border: 1px solid #F1E3CB;
+	color: #0099CC;
+	font-weight: normal;
+	text-decoration: none;
+	font-family: Georgia, "Times New Roman", Times, serif;
+	font-style: italic;
+}
+
+p {
+    margin: 5px 0px;
+    padding: 0px;
+}
+
+ul {
+    margin: 5px 0;
+    padding: 0;
+    list-style: none;
+	
+}
+
+ul li {
+/*	background: transparent url(li.gif) no-repeat scroll 0 7px;
+	margin: 0 0 0 3px;
+	padding: 0 0 0 15px;*/
+}
+
+a:link, a:visited {
+  /*  color: #d81848;*/
+     text-decoration: none;
+}
+
+a:hover 
+{
+    color: #d81848;
+    text-decoration: underline;
+  
+}
+
+a img {
+    border: none;
+}
