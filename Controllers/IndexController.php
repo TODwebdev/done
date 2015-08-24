@@ -1,7 +1,9 @@
 <?php
 namespace Controllers;
 
+use Config\StandardConfigFactory;
 use Config\UserConfig;
+use Exceptions\Http\InitializeHttpException;
 use Services\AuthService;
 use Services\MongoService;
 use View\View;
@@ -9,6 +11,12 @@ use View\View;
 
 class IndexController
 {
+    /**
+     * Suppose this file lives in Config directory
+     * @var string config file name
+     */
+    protected $configFileName = 'redis_config.php';
+
     // identifier of a current user
     /**
      * @var UserConfig
@@ -18,7 +26,13 @@ class IndexController
     public function __construct() {
         $authService = new AuthService();
         $pwd = $authService->getUserIdentifier();
-        $this->config = new UserConfig($pwd);
+        $this->configFileName = $_SERVER['DOCUMENT_ROOT'] . '\..\Config\\' . $this->configFileName;
+        try {
+            $configFactory = new StandardConfigFactory($this->configFileName);
+            $this->config = $configFactory->build($pwd);
+        } catch (\Exception $e) {
+            throw new InitializeHttpException($e->getMessage());
+        }
     }
 
     /**

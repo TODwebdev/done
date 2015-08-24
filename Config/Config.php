@@ -1,9 +1,13 @@
 <?php
 namespace Config;
+use DataProviders\MongoDataProvider;
 use DataProviders\RedisDataProvider;
 use DataProviders\RedisExistsMapper;
 use DataProviders\RedisGetMapper;
 use DataProviders\RedisSetMapper;
+use Exceptions\CacherInitException;
+use Exceptions\ConfigKeyException;
+use Exceptions\DatabaseInitException;
 use Predis\Client;
 use Predis\Autoloader;
 
@@ -11,22 +15,50 @@ use Predis\Autoloader;
  * Class Holds default info for system operability
  * All data are stored in One of the DataProviders (current - Redis)
  */
-abstract class Config {
+abstract class Config
+{
+
     /**
-     * @var Client Redis client instance
+     * @var string name of a default config file
      */
-    private $redis;
-    protected $redisAutoloaderFile = '';
+    private $defaultConfigFile = 'default_config.php';
+
     /**
+     * @var string name of a configuration file
+     */
+    protected $confFile;
+
+    /**
+     * @var DataProviderInterface Client object, accessible via getCacher
+     */
+    private $cacher;
+
+    /**
+     * @return DataProviderInterface obj for cache system
+     */
+    public function getCacher()
+    {
+        return $this->cacher;
+    }
+
+    /**
+     * current instance of DB object
      * @var
      */
-    private $mongo;
-    private $mongoDbName = 'todo_list';
-    private $mongoCollectionName = 'tasks';
+    private $db;
 
-    protected $keySeparator = '_';
-
-    protected $dataStorage = 'RedisDataProvider';     // name of a data provider class
+    /**
+     * @return obj for database interactions
+     */
+    public function getDb($collectionName)
+    {
+        if (null === $collectionName) {
+            $collectionName = $this->mongoCollectionName;
+        }
+        $collName = $this->mongoCollectionName;
+        $coll = $this->db->$collName;
+        return $coll;
+    }
 
     protected $translations =  [
         'ADD'	=> [
@@ -39,116 +71,205 @@ abstract class Config {
         ]
     ];
 
-    protected $taskStates = ['new', 'doing', 'done']; // states of task
-    // by default user has 1 category - Unsorted and default task duration of 1 hour
-    protected $categories = [ 'unsorted' => [ 'name'=>'Unsorted', 'task_duration'=>3600000 ], 'important' => [ 'name'=>'Important', 'task_duration'=>3600000 ] ];
 
-    // which keys should be cached in redis THEY ARE USER SPECIFIC
-    protected $initKeys = [ 'userPwd', 'taskStates', 'categories' ];
-
-    public function __construct()
+    /**
+     * Constructor gets name of a config file (so we can have different configs
+     * @param string $configFile
+     * @sets $this->confFile
+     * @throws \InvalidArgumentException
+     */
+    public function __construct($configFile)
     {
-        $this->redisAutoloaderFile = __DIR__ . '\..\Vendor\predis\autoload.php';
-        // for the development purposes translations were left in code, but should be taken out
-       // include (__DIR__ . '\translations.php');
-       // $this->translations = $translations;
-        if (!$this->getRedis()->exists('translations')) {
-            $this->getRedis()->set('translations', json_encode($this->translations, 111));
+        if (is_file($configFile)) {
+            $this->confFile = $configFile;
+        } else {
+            throw new \InvalidArgumentException('Config file name does not point to a file');
         }
-        if (!$this->getRedis()->exists('categories')) {
-            $this->getRedis()->set('categories', json_encode($this->categories, 111));
-    }
     }
 
     /**
-     * If this function is called, this means that there is a need to create keys with default values
+     * Initialize default setup
+     * BASIC defaults live in default_config.php
+     * Custom defaults override basic
      */
     protected function init()
     {
-        $redisDataProvider = new RedisDataProvider($this);
-            foreach ($this->initKeys as $key=>$type) {
-                $keyValMapper = new RedisSetMapper($this->userPwd . $this->keySeparator . $key, $this->key);
-                $redisDataProvider->set($keyValMapper);
-            }
-            $keyValMapper = new RedisSetMapper($this->userPwd.'_'.'init', 1);
-            $redisDataProvider->set($keyValMapper);
-    }
+        try {
+            // default setup
+            $this->initVars($_SERVER['DOCUMENT_ROOT'] . '\..\Config\\' . $this->defaultConfigFile);
+            // override defaults
+            $this->initVars($this->confFile);
 
-    public function getUserPwd()
-    {
-        return $this->userPwd;
-    }
+            // for the development purposes translations were left in code, but should be taken out
+            // include (__DIR__ . '\translations.php');
+            // $this->translations = $translations;
 
-    /**
-     * Returns instance of Redis client
-     * @param string $pathToAutoloader
-     * @return Client redis object
-     */
-    public function getRedis($pathToAutoloader=null)
-    {
-        if ($this->redis instanceof Client) {
+            $cacher = $this->cachingSystem;
+            $this->initCacher($cacher, $this->autoloaderInitFile);
 
-        } else {
-            if (null === $pathToAutoloader) {
-                require  "$this->redisAutoloaderFile";
-            } else {
-                require  "$pathToAutoloader";
-            }
-            Autoloader::register();
-            $this->redis = new Client();
+            $db = $this->database;
+            $this->initDatabase($db);
+
+
+            // for the development purposes translations were left in code, but should be taken out
+            // include (__DIR__ . '\translations.php');
+            // $this->translations = $translations;
+
+//            $cacherObj = $this->getCacher();
+//            if (!$cacherObj->exists('translations')) {
+//                $cacherObj->set('translations', json_encode($this->translations, 111));
+//            }
+//            if (!$cacherObj->exists('categories')) {
+//                $cacherObj->set('categories', json_encode($this->categories, 111));
+//            }
+
+            /// if we need some user-specific initialization
+            $this->initUserVars();
+
+        } catch (\CacherInitException $e) {
+            /// should we try to initialize cacher with default params here???
+
+            throw new \Exception($e->getMessage());
+        } catch (\Exception $e) {
+            throw new \RuntimeException($e->getMessage());
         }
-        return $this->redis;
     }
 
     /**
-     * Returns instance of \MongoCollection
-     * @return \MongoCollection
+     * @param string $confFile init file name, which contains php assoc array
+     * @return bool
      */
-    public function getMongo()
+    protected function initVars($confFile)
     {
-        if ($this->mongo instanceof \MongoCollection) {
-
-        } else {
-            $conn = new \MongoClient();
-            $dbName = $this->mongoDbName;
-            $db = $conn->$dbName;
-            $collName = $this->mongoCollectionName;
-            $this->mongo = $db->$collName;
+        $vars = include_once($confFile);
+        foreach ($vars as $key=>$val) {
+            $this->$key = $val;
         }
-        return $this->mongo;
+        return true;
+    }
+
+     /**
+     * Initialize cacher Object
+     * @param string $cacherSystemName
+     * @param string $confFileName
+     * @sets $this->cacher
+     * @return $this->cacher
+     * @throws CacherInitException
+     */
+    protected function initCacher ($cacherSystemName, $confFileName)
+    {
+        $funcName = 'init'.ucfirst($cacherSystemName).'Factory';
+        if (is_callable([$this, $funcName])) {
+            $this->cacher = $this->$funcName($confFileName);
+            return $this->cacher;
+        } else {
+            throw new CacherInitException ($cacherSystemName);
+        }
     }
 
     /**
-     * getter checks TTL of data and retrieves it from data storage
-     * We try to find user-specific key in DataProvider, if none - try to find key for default user in DataProvider,
+     * initialize cacher object
+     * @param string $confFileName path to autoloader file
+     * @throws CacherInitException
+     * @returns Predis\Client redis client obj
+     */
+    protected function initRedisFactory ($confFileName)
+    {
+        if (null === $confFileName) {
+            throw new CacherInitException('redis');
+        }
+
+        require  "$confFileName";
+        Autoloader::register();
+        return new Client();
+    }
+
+    /**
+     * this is dummy function. Should be overloaded
+     * @param string $confFileName path to autoloader file
+     * @returns  memcache provider
+     * @throws CacherInitException
+     */
+    protected function initMemcacheFactory ($confFileName)
+    {
+        throw new CacherInitException('memcache');
+    }
+    /**
+     * this is dummy function. Should be overloaded
+     * @param string $confFileName path to autoloader file
+     * @returns  filesystem provider
+     * @throws CacherInitException
+     */
+    protected function initFilesystemFactory ($confFileName)
+    {
+        throw new CacherInitException('filesystem');
+    }
+
+// database
+
+    /**
+     * Initialize database Object
+     * @param string $dbSystemName name of a database that should be used (mongo, mysql..)
+     * @sets $this->db
+     * @return $this->db
+     * @throws DatabaseInitException
+     */
+    protected function initDatabase ($dbSystemName)
+    {
+        $funcName = 'init'.ucfirst($dbSystemName).'Factory';
+        if (is_callable([$this, $funcName])) {
+            $this->db = $this->$funcName();
+            return $this->db;
+        } else {
+            throw new DatabaseInitException($dbSystemName);
+        }
+    }
+
+    /**
+     * initialize database object
+     * @throws DatabaseInitException
+     * @returns mongoDb client obj
+     */
+    protected function initMongoFactory ()
+    {
+        $conn = new \MongoClient();
+        $dbName = $this->mongoDbName;
+        $database = $conn->$dbName;
+        //$collName = $this->mongoCollectionName;
+        //$coll = $db->$collName;
+        return $database;
+    }
+
+    /**
+     * getter checks TTL of data and retrieves it from cacher
+     * We try to find user-specific key in cacher, if none - try to find key for default user key in cacher,
      * if none - try to read protected properties, if none - throw exception
      * @param string $key key of data to retrieve (key does not contain userPwd prefix)
      * @return mixed value of a key or null
      */
     public function __get($key)
-    {
-        if ($this->getRedis()->exists($key)) {
+    {   // client specific key
+        $userkey = $this->getUserPwd() .'_' . $key;    //$this->keySeparator
+        $defaultkey = $this->getUserPwd() . '_' . $key;
+        // FIXME
+        $cacher = $this->getCacher();
+        if ($this->getCacher()->exists($userkey)) { // looking for user-specific key
 
-        }
-        $redisDataProvider = new RedisDataProvider($this);
-        $existsMapper = new RedisExistsMapper($key);
-        $val = $redisDataProvider->exists($existsMapper);
-        if (1 !== intval($val)) {
-           $res = null;
+        } elseif ($this->getCacher()->exists($defaultkey)) {
+
         } else {
-            $getMapper = new RedisGetMapper($key);
-            $res = $redisDataProvider->get($getMapper);
+            if (isset($this->$key)) {
+                $res = $this->$key;
+            } else {
+                throw new ConfigKeyException($key);
+            }
         }
         return $res;
     }
 
     /**
-     * writes data into data storage
+     * Here You can initialize user-specific stuff, write it in cacher, etc
+     * @return mixed
      */
-    public function __set($key, $data)
-    {
-//        $value = (is_array($data)) ? serialize($this->$key) : $this->$key;
-//        $keyValMapper = new RedisSetMapper($this->userPwd . $this->keySeparator . $key, $value);
-//        $redisDataProvider->set($keyValMapper);
-    }
+    abstract protected function initUserVars();
 }

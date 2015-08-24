@@ -52,15 +52,7 @@ class View
      */
     protected function content($data)
     {
-        $tr = json_encode($data['translations']);
-        $cat = json_encode($data['categories']);
-
         $this->output .= <<<INLINE
-<script>var currLang = "en";
-		var username = "Guest";
-		var trans = JSON.parse($tr);
-		var cats = JSON.parse($cat);
-</script>
 
 <div ng-app="todo"   class="container">
 
@@ -86,6 +78,7 @@ class View
 	<div class="col-sm-6 pull-right">
 		<div class="list-group"  >
 			<a href="#" ng-repeat="cats in model" class="list-group-item" ng-class="{'active' : currentShow === cats.name}" ng-click="changeCat(cats.name)" >
+			<span class="pull-right">{{cats.category}}</span>
 			<span class="badge">{{cats.list.length}}</span>
 			{{cats.name}}
 			</a>
@@ -114,9 +107,9 @@ class View
 			<div class="col-xs-10 col-sm-10 col-md-10 col-lg-10 col-xs-offset-1 col-sm-offset-1  col-md-offset-1 col-lg-offset-1 ">
 				<div class="row">
 					<ul class="nav nav-pills todo-filter">
-						  <li ng-class="{'active' : show == 'Incomplete' }" ng-click="show='Incomplete'"><a href="#">TO DO</a></li>
-						  <li ng-class="{'active' : show == 'Complete' }" ng-click="show='Complete'"><a href="#">DONE</a></li>
-						  <li ng-class="{'active' : show == 'All' }" ng-click="show='All'"><a href="#">ALL</a></li>
+						  <li ng-class="{'active' : show == 'new' }" ng-click="show='new'"><a href="#">TO DO</a></li>
+						  <li ng-class="{'active' : show == 'done' }" ng-click="show='done'"><a href="#">DONE</a></li>
+						  <li ng-class="{'active' : show == 'all' }" ng-click="show='all'"><a href="#">ALL</a></li>
 					</ul>
 				</div>
 			</div>
@@ -135,15 +128,16 @@ class View
 
 	<div class="col-xs-12 col-sm-12 col-md-12 col-lg-12">
 			<div class="row">
-					<ul class="list-unstyled" ng-repeat="todos in model track by \$index" ui-sortable="todoSortable" ng-model="todos.list" ng-show="\$index === currentShow">
-						<li class="todoTask" ng-repeat="todo in todos.list | filter:showFn | filter :todoSearch ">
-							<input class="todoCheckbox" ng-model="todo.isDone" type="checkbox">
-							<label class="todoCheckboxlabel" ></label>
-							<edit-in-place value="todo.header"></edit-in-place>
-							<button type="button" class="close pull-right" aria-hidden="true" ng-click="deleteTodo(\$index)">&times;</button>
-						</li>
-					</ul>
-				</div>
+                <ul>
+                    <li class="todoTask" ng-repeat="todo in model.list | filter:showFn | filter :todoSearch ">
+                        <input class="todoCheckbox" ng-model="todo.isDone" type="checkbox">
+                        <label class="todoCheckboxlabel" ></label>
+                        {{todo.header}}
+                        <edit-in-place value="todo.header"></edit-in-place>
+                        <button type="button" class="close pull-right" aria-hidden="true" ng-click="deleteTodo(\$index)">&times;</button>
+                    </li>
+                </ul>
+            </div>
 	</div>
 
 

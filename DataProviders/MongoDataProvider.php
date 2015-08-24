@@ -21,7 +21,7 @@ class MongoDataProvider implements DataProviderInterface
      */
     public function get(MapperInterface $mapper)
     {
-        return $this->config->getMongo()->find($mapper->transform());
+        return $this->config->getDb($this->config->mongoCollectionName)->find($mapper->transform());
     }
 
     /**
@@ -32,6 +32,6 @@ class MongoDataProvider implements DataProviderInterface
     public function set(MapperInterface $mapper)
     {
         $insert = $mapper->transform();
-        return $this->config->getMongo()->insert($insert);
+        return $this->config->getDb($this->config->mongoCollectionName)->insert($insert);
     }
 }

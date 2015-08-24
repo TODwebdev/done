@@ -9,24 +9,6 @@ use Predis\Autoloader;
 
 class RedisDataProvider implements DataProviderInterface
 {
-
-    /*   public function redis () {
-    require 'C:\Users\TOD\Documents\OSERVTmp\OpenServer\domains\weather\predis\autoload.php';
-    Predis\Autoloader::register();
-     try {
-        $redis = new Predis\Client();
-        //$info = print_r($redis->info(), true);
-        if ($redis->ttl('weather')<=0) {
-            $weather = $this->process();
-            $redis->set('weather', $weather);
-            $redis->expire('weather', 5);
-        }
-    }
-    catch (Exception $e) {
-        die($e->getMessage());
-    }
-    return $redis->get('weather');
-    }*/
     /**
      * @var ConfigInterface
      */
@@ -35,12 +17,12 @@ class RedisDataProvider implements DataProviderInterface
     /**
      * @var Client
      */
-    protected $redis;
+    protected $cacher;
 
     public function __construct(ConfigInterface $config)
     {
         $this->config = $config;
-        $this->redis = $this->config->getRedis();
+        $this->cacher = $this->config->getCacher();
     }
 
     /** Query to find data
@@ -49,7 +31,7 @@ class RedisDataProvider implements DataProviderInterface
      */
     public function get(MapperInterface $mapper)
     {
-        return $this->redis->get($mapper->transform());
+        return $this->cacher->get($mapper->transform());
     }
 
     /**
@@ -60,7 +42,7 @@ class RedisDataProvider implements DataProviderInterface
     public function set(MapperInterface $mapper)
     {
         list($key, $value) = $mapper->transform();
-        $this->redis->set($key, $value);
+        $this->cacher->set($key, $value);
         return true;
     }
 
@@ -71,7 +53,7 @@ class RedisDataProvider implements DataProviderInterface
      */
     public function exists(MapperInterface $mapper)
     {
-        return $this->redis->exists($mapper->transform());
+        return $this->cacher->exists($mapper->transform());
     }
 
     /**
@@ -79,8 +61,8 @@ class RedisDataProvider implements DataProviderInterface
      * @param string $userPwd
      * @return bool
      */
-    public function userExists(string $userPwd)
+    public function userExists($userPwd)
     {
-        return $this->redis->get($userPwd.'_'.'init');
+        return $this->cacher->get($userPwd.'_'.'init');
     }
 }

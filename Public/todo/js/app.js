@@ -2,12 +2,12 @@ var App = angular.module("done", ["ui.sortable", "LocalStorageModule"]);
 
 App.run(function ($rootScope, $http) {
 
-    $rootScope.username = angular.isDefined(username) ? username : 'Guest';
-    $rootScope.currLang = angular.isDefined(currLang) ? currLang : 'EN';
-    $rootScope.trans = JSON.parse(trans); console.log($rootScope.trans);
-    $rootScope.categories = JSON.parse(cats); console.log($rootScope.categories);
+    $rootScope.username = 'Guest';//angular.isDefined(username) ? username : 'Guest';
+    $rootScope.currLang = 'EN'; //angular.isDefined(currLang) ? currLang : 'EN';
+    $rootScope.trans = {ADD:{EN:'ADD',RU:'СОЗДАТЬ'},header1:{EN:'HELLO',RU:'Приветствую'}};
+    $rootScope.cats = {unsorted:{name:'unsorted', task_duration:3600000},important:{name:'important',task_duration:3600000}};
     $rootScope.isCollapsed = 0;
-
+    $rootScope.currentShow = 'unsorted';
 
 
     /* 
@@ -33,11 +33,11 @@ App.run(function ($rootScope, $http) {
 
     };
 
-    $rootScope.getList = function (period) {
+    $rootScope.getList = function (period, category) {
         if (!period) {
             period = 'all';
         }
-        return $http.get('/index.php?action=getlist&period=' + period);
+        return $http.get('/index.php?action=getlist&period=' + period + '&category=' + category);
     };
 
 });
@@ -93,47 +93,47 @@ App.controller('CollapseCtrl', function ($scope, $rootScope) {
 
 
 App.controller('IoCtrl', ['$scope', '$rootScope', 'getList', function ($scope, $rootScope, getList) {
-   $scope.model = $rootScope.categories;
-    $scope.currentShow = 'unsorted';
+    $scope.model = $rootScope.cats;
+
     $scope.changeCat = function(activeCat) {
-        $scope.currentShow = activeCat;
         console.log(activeCat);
-        getList.getClosest().success(function (data) {
-            $scope.model[$scope.currentShow].list = data;
-        });
+      /*  getList.getClosest().success(function (data) {
+            $scope.model[activeCat].list = data;
+        });*/
+
+        $rootScope.currentShow = activeCat;
     }
 } ]);
 
 
 
-App.controller("TodoCtrl", function ($scope, addTask, getList) {
-
+App.controller("TodoCtrl", function ($scope, addTask, getList, $rootScope) {
+    $scope.model = {};
     $scope.init = function () {
-
         //if (!localStorageService.get("todoList")) {
-            $scope.model = [
-				{
-				    name: "Олег", list: []
-				},
-				{
-				    name: "Ирина", list: []
-				}
-			];
+        $scope.model.list = [];
+        $scope.show = "new";
+
         getList.getClosest().success(function (data) {
-            $scope.model[$scope.currentShow].list = data;
+            for (i in data) {
+                console.log(data[i]);
+                if ($rootScope.currentShow == data[i].category) {
+                    $scope.model.list.push(data[i]);
+                }
+            }
         });
+        console.log($scope.model);
         //} else {
         //    $scope.model = localStorageService.get("todoList");
         //}
-        $scope.show = "Incomplete";
-        $scope.currentShow = 0;
+
     };
 
     $scope.addTodo = function () {
         /*Should prepend to array*/
         var currTask = { header: $scope.newTodo };
 
-        $scope.model[$scope.currentShow].list.splice(0, 0, currTask);
+        $scope.model.list.splice(0, 0, currTask);
         /*Reset the Field*/
         $scope.newTodo = "";
 
